@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22 # 升级到 Node 22 避免警告
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -43,15 +43,18 @@ jobs:
         working-directory: client
         run: npm install
 
-      # Tauri 打包神器，会自动构建并将产物上传为 Github Release Draft
       - name: Build Tauri App
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 强制跳过签名检查（除非你配置了证书）
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         with:
           projectPath: client
           tagName: v__VERSION__
           releaseName: 'KnowledgeOS Client v__VERSION__'
-          releaseBody: '自动化构建发布的商业化安装包 (包含 macOS DMG 和 Windows EXE)。'
+          releaseBody: 'Automated build (macOS DMG & Windows EXE).'
           releaseDraft: true
           prerelease: false
