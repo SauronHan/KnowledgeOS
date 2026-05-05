@@ -1,0 +1,63 @@
+name: kos-server
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: kos_postgres
+    environment:
+      POSTGRES_USER: kos_admin
+      POSTGRES_PASSWORD: kos_password
+      POSTGRES_DB: knowledgeos
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: kos_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+  api:
+    build: .
+    container_name: kos_api
+    restart: unless-stopped
+    ports:
+      - "8080:8000"
+    env_file:
+      - .env
+    environment:
+      # 在 Docker 桥接网络中，直接通过服务名访问 postgres 和 redis
+      - DATABASE_URL=postgresql://kos_admin:kos_password@postgres:5432/knowledgeos
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./data:/app/data
+
+  worker:
+    build: .
+    container_name: kos_celery_worker
+    restart: unless-stopped
+    command: celery -A app.tasks worker --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://kos_admin:kos_password@postgres:5432/knowledgeos
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+      - api
+    volumes:
+      - ./data:/app/data
+
+volumes:
+  pgdata:
+  redisdata:

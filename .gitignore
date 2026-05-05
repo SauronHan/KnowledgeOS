@@ -1,0 +1,54 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+server/server.log
+server/knowledgeos.db
+
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+client/tsconfig.app.tsbuildinfo
+client/tsconfig.node.tsbuildinfo
+
+# Tauri
+client/src-tauri/target/
+client/src-tauri/binaries/
+
+# KnowledgeOS Data (SaaS 隔离数据，严禁上传)
+server/data/lancedb/
+server/data/raw_uploads/
+server/data/transcripts/
+
+# 特殊文件
+docs/产品LLM-Prompt梳理.md
+docs/开发计划.md
+docs/Github 同步.md
+
+# 浏览器插件-临时隐藏
+extension/
+
+# Large assets
+*.pdf
+*.zip
+*.tar.gz
+*.dmg
+*.msi
+*.exe

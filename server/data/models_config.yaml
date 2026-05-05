@@ -1,0 +1,15 @@
+api_keys:
+  GEMINI_API_KEY: ''
+  DEEPSEEK_API_KEY: sk-468b84bdcf4c482c87be932c973c874d
+  ANTHROPIC_API_KEY: ''
+  OPENAI_API_KEY: ''
+  OPENROUTER_API_KEY: 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
+  TAVILY_API_KEY: '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'
+  OMLX_API_BASE: 'http://host.docker.internal:8000/v1'
+  OLLAMA_API_BASE: http://host.docker.internal:11434
+models:
+  step1_extractor: openrouter/deepseek/deepseek-v4-pro
+  step2_graph_maker: openrouter/deepseek/deepseek-v4-pro
+  deep_researcher: openrouter/deepseek/deepseek-v4-pro
+  chat_model: openrouter/deepseek/deepseek-v4-flash
+  translator_model: deepseek/deepseek-chat
