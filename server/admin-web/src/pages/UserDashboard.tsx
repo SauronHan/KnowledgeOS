@@ -187,6 +187,7 @@ export function UserDashboard() {
                   <option value="employee">Employee (Viewer / Editor)</option>
                   <option value="checker">Checker (Audit Documents)</option>
                   <option value="admin">Admin (System Wide)</option>
+                  <option value="system">System (Cross-Tenant Admin)</option>
                 </select>
               </div>
               <div>

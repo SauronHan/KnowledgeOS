@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import ingest, audit, query, stream, chat, graph, config, users, auth, projects, concepts
+from .routers import ingest, audit, query, stream, chat, graph, config, users, auth, projects, concepts, cookies
 from .database import engine, Base
 from . import models
 
@@ -36,6 +36,7 @@ app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(projects.router, prefix="/api/v1", tags=["projects"])
 app.include_router(concepts.router, prefix="/api/v1", tags=["concepts"])
+app.include_router(cookies.router, prefix="/api/v1", tags=["admin"])
 
 @app.get("/health")
 async def health_check():

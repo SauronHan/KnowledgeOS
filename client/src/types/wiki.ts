@@ -5,6 +5,12 @@ export interface WikiProject {
   name: string
   path: string
   serverId?: number
+  visibility?: "private" | "shared"
+  isReadonly?: boolean
+  /** Server-side package version (shared projects only) */
+  packageVersion?: number
+  /** Server-side package filename (shared projects only) */
+  packageFilename?: string
 }
 
 export interface FileNode {
@@ -13,6 +19,7 @@ export interface FileNode {
   is_dir: boolean
   children?: FileNode[]
   serverStatus?: string
+  sourceUrl?: string | null
 }
 
 export interface WikiPage {

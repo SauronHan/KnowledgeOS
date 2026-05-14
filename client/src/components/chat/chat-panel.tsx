@@ -277,7 +277,7 @@ export function ChatPanel() {
   }, [project, llmConfig, setFileTree])
 
   const hasAssistantMessages = activeMessages.some((m) => m.role === "assistant")
-  const showWriteButton = mode === "ingest" && !isStreaming && hasAssistantMessages
+  const showWriteButton = mode === "ingest" && !isStreaming && hasAssistantMessages && !project?.isReadonly
 
   return (
     <div className="flex h-full flex-row overflow-hidden">

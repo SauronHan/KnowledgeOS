@@ -1,5 +1,21 @@
 
-export const API_BASE_URL = "http://localhost:8080/api/v1";
+/**
+ * Read the configured server URL from localStorage.
+ * Defaults to http://127.0.0.1:8080 if not yet configured.
+ */
+export function getServerUrl(): string {
+  const raw = localStorage.getItem("kos_server_url")
+  return raw || "http://127.0.0.1:8080"
+}
+
+export function setServerUrl(url: string): void {
+  localStorage.setItem("kos_server_url", url)
+}
+
+function getApiBaseUrl(): string {
+  const server = getServerUrl().replace(/\/+$/, "")
+  return `${server}/api/v1`
+}
 
 /**
  * Get the current auth token from storage.
@@ -30,7 +46,7 @@ export function setProjectServerId(id: number | string | null): void {
  */
 export async function kosFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
   const token = getAuthToken();
-  const url = endpoint.startsWith("http") ? endpoint : `${API_BASE_URL}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+  const url = endpoint.startsWith("http") ? endpoint : `${getApiBaseUrl()}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
 
   const headers = new Headers(options.headers || {});
   if (token && !headers.has("Authorization")) {
@@ -89,11 +105,24 @@ export async function kosReadFile(path: string): Promise<string> {
 
 /**
  * Sync a project to the backend. Returns the server-side project ID.
+ * @param tenantIds null = ALL tenants, number[] = specific tenants, undefined = private
  */
-export async function syncProjectToServer(uuid: string, name: string): Promise<number> {
+export async function syncProjectToServer(
+  uuid: string,
+  name: string,
+  tenantIds?: number[] | null,
+): Promise<number> {
+  const body: Record<string, any> = { uuid, name }
+  if (tenantIds !== undefined) {
+    if (tenantIds === null) {
+      body.visible_to_all_tenants = true
+    } else {
+      body.target_tenant_ids = tenantIds
+    }
+  }
   const data = await kosApiRequest<{ project_id: number }>("/projects", {
     method: "POST",
-    body: JSON.stringify({ uuid, name }),
+    body: JSON.stringify(body),
   });
   setProjectServerId(data.project_id);
   return data.project_id;

@@ -1,4 +1,6 @@
 use std::fs;
+use std::fs::File;
+use std::io::{self, Write};
 use std::path::Path;
 
 use chrono::Local;
@@ -277,6 +279,140 @@ pub fn open_project(path: String) -> Result<WikiProject, String> {
     })
 }
 
+/// Download a shared project ZIP from the server, extract it to the local filesystem,
+/// and return a WikiProject for the extracted directory.
+#[tauri::command]
+pub async fn download_and_extract_shared_project(
+    url: String,
+    token: String,
+    target_dir: String,
+    project_name: String,
+    uuid: String,
+) -> Result<WikiProject, String> {
+    let uuid_short: String = uuid.chars().take(8).collect();
+    let root = std::path::PathBuf::from(&target_dir).join(format!("{}-{}", project_name, uuid_short));
+
+    if root.exists() {
+        return Err(format!("Directory already exists: '{}'", root.display()));
+    }
+
+    // Download ZIP to temp file
+    let tmp_dir = std::env::temp_dir().join("kos_downloads");
+    fs::create_dir_all(&tmp_dir)
+        .map_err(|e| format!("Failed to create temp dir: {}", e))?;
+    let tmp_path = tmp_dir.join(format!("{}.zip", uuid));
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(&url)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| format!("Download failed: {}", e))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("Download failed with status: {}", resp.status()));
+    }
+
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read response body: {}", e))?;
+
+    // Write temp file and extract on a blocking thread
+    let tmp_path_clone = tmp_path.clone();
+    let project_name_clone = project_name.clone();
+    let root_clone = root.clone();
+    let root_path = tauri::async_runtime::spawn_blocking(move || {
+        run_guarded("download_and_extract_shared_project", || {
+            let mut f = File::create(&tmp_path_clone)
+                .map_err(|e| format!("Failed to create temp file: {}", e))?;
+            f.write_all(&bytes)
+                .map_err(|e| format!("Failed to write temp file: {}", e))?;
+            drop(f);
+
+            let zip_file = File::open(&tmp_path_clone)
+                .map_err(|e| format!("Failed to open temp ZIP: {}", e))?;
+            let mut archive = zip::ZipArchive::new(zip_file)
+                .map_err(|e| format!("Invalid ZIP file: {}", e))?;
+
+            // Detect common root directory prefix (e.g. "S-Project01/").
+            // When users zip a folder from Finder/Explorer, the ZIP wraps
+            // everything inside one top-level directory. Strip that prefix
+            // during extraction so schema.md lands directly under root_clone.
+            let common_prefix = detect_common_root(&mut archive);
+            let strip_len = match &common_prefix {
+                Some(p) => p.len(),
+                None => 0,
+            };
+
+            for i in 0..archive.len() {
+                let mut entry = archive.by_index(i)
+                    .map_err(|e| format!("Failed to read ZIP entry {}: {}", i, e))?;
+                let entry_name = entry.name().to_string();
+
+                if entry_name.contains("..") || entry_name.starts_with('/') || entry_name.starts_with('\\') {
+                    continue;
+                }
+
+                // Skip the root directory entry itself if we're stripping
+                if strip_len > 0 && entry_name == format!("{}/", &common_prefix.as_ref().unwrap().trim_end_matches('/')) {
+                    continue;
+                }
+                if let Some(ref pfx) = common_prefix {
+                    if entry_name == pfx.as_str() {
+                        continue;
+                    }
+                }
+
+                let relative = if strip_len > 0 && entry_name.starts_with(common_prefix.as_ref().unwrap()) {
+                    &entry_name[strip_len..]
+                } else {
+                    &entry_name
+                };
+
+                let target = root_clone.join(relative);
+                if entry.is_dir() {
+                    fs::create_dir_all(&target)
+                        .map_err(|e| format!("Failed to create directory '{}': {}", target.display(), e))?;
+                } else {
+                    if let Some(parent) = target.parent() {
+                        fs::create_dir_all(parent)
+                            .map_err(|e| format!("Failed to create parent dirs for '{}': {}", target.display(), e))?;
+                    }
+                    let mut outfile = File::create(&target)
+                        .map_err(|e| format!("Failed to create file '{}': {}", target.display(), e))?;
+                    io::copy(&mut entry, &mut outfile)
+                        .map_err(|e| format!("Failed to extract '{}': {}", entry_name, e))?;
+                }
+            }
+
+            drop(archive);
+            let _ = fs::remove_file(&tmp_path_clone);
+
+            if !root_clone.join("schema.md").exists() {
+                return Err(format!(
+                    "Extracted project missing schema.md: '{}'",
+                    root_clone.display()
+                ));
+            }
+            if !root_clone.join("wiki").is_dir() {
+                return Err(format!(
+                    "Extracted project missing wiki/ directory: '{}'",
+                    root_clone.display()
+                ));
+            }
+
+            let path = root_clone.to_string_lossy().replace('\\', "/");
+            Ok(WikiProject { name: project_name_clone, path })
+        })
+    })
+    .await
+    .map_err(|e| format!("blocking task join error: {e}"))??;
+
+    Ok(root_path)
+}
+
 fn write_file_inner(path: std::path::PathBuf, contents: &str) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
@@ -284,4 +420,32 @@ fn write_file_inner(path: std::path::PathBuf, contents: &str) -> Result<(), Stri
     }
     fs::write(&path, contents)
         .map_err(|e| format!("Failed to write file '{}': {}", path.display(), e))
+}
+
+/// If every entry in the archive lives under a single top-level directory
+/// (e.g. `S-Project01/schema.md`, `S-Project01/wiki/...`), return that
+/// directory prefix with trailing `/`. Otherwise return None (flat ZIP).
+fn detect_common_root(archive: &mut zip::ZipArchive<File>) -> Option<String> {
+    let mut prefix: Option<String> = None;
+    for i in 0..archive.len() {
+        let name = match archive.by_index(i) {
+            Ok(e) => e.name().to_string(),
+            Err(_) => continue,
+        };
+        // Skip macOS resource forks and hidden metadata
+        if name.starts_with("__MACOSX/") || name.contains("/.") || name == ".DS_Store" {
+            continue;
+        }
+        // Get first path component
+        let first = match name.find('/') {
+            Some(pos) => &name[..pos + 1],  // "dir/"
+            None => continue,                 // root-level file → no common prefix
+        };
+        match &prefix {
+            None => prefix = Some(first.to_string()),
+            Some(p) if p == first => {}
+            _ => return None, // different prefixes → flat structure
+        }
+    }
+    prefix
 }

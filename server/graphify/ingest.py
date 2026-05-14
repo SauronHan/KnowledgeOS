@@ -35,6 +35,14 @@ def _detect_url_type(url: str) -> str:
         return "github"
     if "youtube.com" in lower or "youtu.be" in lower:
         return "youtube"
+    if "bilibili.com/video/" in lower:
+        return "bilibili_video"
+    if "bilibili.com" in lower and ("/read/" in lower or "/opus/" in lower):
+        return "bilibili_article"
+    if "zhuanlan.zhihu.com" in lower:
+        return "zhihu"
+    if "mp.weixin.qq.com" in lower:
+        return "wechat"
     parsed = urllib.parse.urlparse(url)
     path = parsed.path.lower()
     if path.endswith(".pdf"):
@@ -181,11 +189,13 @@ def _download_binary(url: str, suffix: str, target_dir: Path) -> Path:
     return out_path
 
 
-def ingest(url: str, target_dir: Path, author: str | None = None, contributor: str | None = None) -> Path:
+def ingest(url: str, target_dir: Path, author: str | None = None, contributor: str | None = None, cookies_text: str | None = None) -> Path:
     """
     Fetch a URL and save it into target_dir as a graphify-ready file.
 
     Returns the path of the saved file.
+
+    cookies_text: Netscape-format cookie string passed to yt-dlp if the URL is a video.
     """
     target_dir.mkdir(parents=True, exist_ok=True)
     url_type = _detect_url_type(url)
@@ -207,9 +217,9 @@ def ingest(url: str, target_dir: Path, author: str | None = None, contributor: s
             print(f"Downloaded image: {out.name}")
             return out
 
-        if url_type == "youtube":
+        if url_type == "youtube" or url_type == "bilibili_video":
             from graphify.transcribe import download_audio
-            out = download_audio(url, target_dir)
+            out = download_audio(url, target_dir, cookies_text=cookies_text)
             print(f"Downloaded audio: {out.name}")
             return out
 

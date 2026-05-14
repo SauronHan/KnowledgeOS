@@ -12,6 +12,26 @@ from pathlib import Path
 import ipaddress
 import socket
 
+_RFC1918_PREFIXES = (
+    ipaddress.IPv4Network('10.0.0.0/8'),
+    ipaddress.IPv4Network('172.16.0.0/12'),
+    ipaddress.IPv4Network('192.168.0.0/16'),
+)
+
+def _is_ssrf_dangerous(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """True only for IPs that would expose internal/private infrastructure.
+    
+    Blocks: RFC 1918 private, loopback, link-local, multicast.
+    Does NOT block: Benchmarking (198.18.0.0/15), CGNAT (100.64.0.0/10),
+    TEST-NET ranges, or other reserved-but-not-dangerous addresses.
+    """
+    if ip.is_loopback or ip.is_link_local or ip.is_multicast:
+        return True
+    if isinstance(ip, ipaddress.IPv4Address):
+        return any(ip in prefix for prefix in _RFC1918_PREFIXES)
+    # IPv6: is_loopback/is_link_local/is_multicast already cover the dangerous ranges
+    return False
+
 _ALLOWED_SCHEMES = {"http", "https"}
 _MAX_FETCH_BYTES = 52_428_800   # 50 MB hard cap for binary downloads
 _MAX_TEXT_BYTES  = 10_485_760   # 10 MB hard cap for HTML / text
@@ -54,7 +74,7 @@ def validate_url(url: str) -> str:
             for info in infos:
                 addr = info[4][0]
                 ip = ipaddress.ip_address(addr)
-                if ip.is_private or ip.is_reserved or ip.is_loopback or ip.is_link_local:
+                if _is_ssrf_dangerous(ip):
                     raise ValueError(
                         f"Blocked private/internal IP {addr} (resolved from '{hostname}'). "
                         f"Got: {url!r}"
@@ -85,7 +105,7 @@ def _ssrf_guarded_socket():
                 ip = ipaddress.ip_address(addr)
             except ValueError:
                 continue
-            if ip.is_private or ip.is_reserved or ip.is_loopback or ip.is_link_local:
+            if _is_ssrf_dangerous(ip):
                 raise OSError(
                     f"SSRF blocked: IP {addr} resolved from '{host}' is private/reserved"
                 )
@@ -118,7 +138,7 @@ def _build_opener() -> urllib.request.OpenerDirector:
 # Safe fetch
 # ---------------------------------------------------------------------------
 
-def safe_fetch(url: str, max_bytes: int = _MAX_FETCH_BYTES, timeout: int = 30) -> bytes:
+def safe_fetch(url: str, max_bytes: int = _MAX_FETCH_BYTES, timeout: int = 30, extra_headers: dict | None = None) -> bytes:
     """Fetch *url* and return raw bytes.
 
     Protections applied:
@@ -128,6 +148,8 @@ def safe_fetch(url: str, max_bytes: int = _MAX_FETCH_BYTES, timeout: int = 30) -
     - Non-2xx status raises urllib.error.HTTPError
     - Network errors propagate as urllib.error.URLError / OSError
 
+    extra_headers: dict of additional HTTP headers (e.g. Cookie, Referer)
+
     Raises:
         ValueError        - disallowed scheme or redirect target
         urllib.error.HTTPError  - non-2xx HTTP status
@@ -136,7 +158,12 @@ def safe_fetch(url: str, max_bytes: int = _MAX_FETCH_BYTES, timeout: int = 30) -
     """
     validate_url(url)
     opener = _build_opener()
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 graphify/1.0"})
+    req_headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    }
+    if extra_headers:
+        req_headers.update(extra_headers)
+    req = urllib.request.Request(url, headers=req_headers)
 
     with _ssrf_guarded_socket(), opener.open(req, timeout=timeout) as resp:
         # urllib raises HTTPError for non-2xx when using urlopen directly;
@@ -162,12 +189,12 @@ def safe_fetch(url: str, max_bytes: int = _MAX_FETCH_BYTES, timeout: int = 30) -
     return b"".join(chunks)
 
 
-def safe_fetch_text(url: str, max_bytes: int = _MAX_TEXT_BYTES, timeout: int = 15) -> str:
+def safe_fetch_text(url: str, max_bytes: int = _MAX_TEXT_BYTES, timeout: int = 15, extra_headers: dict | None = None) -> str:
     """Fetch *url* and return decoded text (UTF-8, replacing bad bytes).
 
     Wraps safe_fetch with tighter defaults for HTML / text content.
     """
-    raw = safe_fetch(url, max_bytes=max_bytes, timeout=timeout)
+    raw = safe_fetch(url, max_bytes=max_bytes, timeout=timeout, extra_headers=extra_headers)
     return raw.decode("utf-8", errors="replace")
 
 

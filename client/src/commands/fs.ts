@@ -70,6 +70,7 @@ export async function readFileAsBase64(path: string): Promise<FileBase64> {
 export async function createProject(
   name: string,
   path: string,
+  tenantIds?: number[] | null,
 ): Promise<WikiProject> {
   const raw = await invoke<RawProject>("create_project", { name, path })
   const id = await ensureProjectId(raw.path)
@@ -77,7 +78,7 @@ export async function createProject(
   // Sync to backend so server assigns a project_id for data isolation
   let serverId: number | undefined
   try {
-    serverId = await syncProjectToServer(id, raw.name)
+    serverId = await syncProjectToServer(id, raw.name, tenantIds)
   } catch (err) {
     console.warn("[KOS] Failed to sync project to server:", err)
   }
@@ -100,4 +101,17 @@ export async function openProject(path: string): Promise<WikiProject> {
 
 export async function clipServerStatus(): Promise<string> {
   return invoke<string>("clip_server_status")
+}
+
+export async function downloadAndExtractSharedProject(
+  url: string,
+  token: string,
+  targetDir: string,
+  projectName: string,
+  uuid: string,
+): Promise<WikiProject> {
+  const raw = await invoke<RawProject>("download_and_extract_shared_project", {
+    url, token, targetDir, projectName, uuid,
+  })
+  return { id: uuid, name: raw.name, path: raw.path }
 }

@@ -35,11 +35,14 @@ services:
       # 在 Docker 桥接网络中，直接通过服务名访问 postgres 和 redis
       - DATABASE_URL=postgresql://kos_admin:kos_password@postgres:5432/knowledgeos
       - REDIS_URL=redis://redis:6379/0
+      # YouTube cookies 文件路径（将 cookies.txt 放到 server/data/ 下后取消注释）
+      # - YOUTUBE_COOKIES_FILE=/app/data/youtube_cookies.txt
     depends_on:
       - postgres
       - redis
     volumes:
       - ./data:/app/data
+      - ./shared_packages:/app/shared_packages
 
   worker:
     build: .
@@ -51,6 +54,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://kos_admin:kos_password@postgres:5432/knowledgeos
       - REDIS_URL=redis://redis:6379/0
+      # - YOUTUBE_COOKIES_FILE=/app/data/youtube_cookies.txt
     depends_on:
       - postgres
       - redis

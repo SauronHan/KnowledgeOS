@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timezone
 from app.database import get_db
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.models import User
+from app.models import User, Project, ProjectTenantAccess
 
 router = APIRouter(tags=["Auth"])
 
@@ -106,3 +106,50 @@ def get_project_id(request: Request) -> Optional[int]:
         except ValueError:
             return None
     return None
+
+
+def check_project_write_permission(current_user: User, project: Project):
+    """
+    检查用户是否对项目拥有写权限。
+    - 私有项目：仅创建者可写。
+    - 共享项目：仅 system 角色可写。
+    """
+    if project.visibility == "shared":
+        if current_user.role != "system":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Read-only access. Only system users can modify shared projects."
+            )
+    else:
+        if project.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied. You do not own this project."
+            )
+    return True
+
+
+def check_project_read_permission(current_user: User, project: Project, db: Session):
+    """
+    检查用户是否有权读取/访问该项目。
+    - 私有项目：仅创建者可访问。
+    - 共享项目：用户的 tenant_id 在 ProjectTenantAccess 授权列表中，或用户为 system 角色。
+    """
+    if project.visibility == "private":
+        if project.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this project."
+            )
+    else:
+        if current_user.role == "system":
+            return True
+        access = db.query(ProjectTenantAccess).filter(
+            ProjectTenantAccess.project_id == project.id,
+            ProjectTenantAccess.tenant_id == current_user.tenant_id
+        ).first()
+        if not access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your tenant is not authorized to access this project."
+            )

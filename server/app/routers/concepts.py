@@ -19,7 +19,6 @@ def list_concepts(
     """获取指定项目下的所有有效概念节点"""
     nodes = db.query(ConceptNode).filter(
         ConceptNode.project_id == project_id,
-        ConceptNode.tenant_id == current_user.tenant_id,
         ConceptNode.status == "active"
     ).all()
     
@@ -49,7 +48,6 @@ def get_concept(
     """获取单个概念节点的完整内容（包括 rich_content）"""
     query = db.query(ConceptNode).filter(
         ConceptNode.id == concept_id,
-        ConceptNode.tenant_id == current_user.tenant_id,
         ConceptNode.status == "active"
     )
     if project_id:

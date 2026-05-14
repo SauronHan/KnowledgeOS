@@ -26,28 +26,29 @@ def process_via_graphify(self, file_path: str, mime_type: str, document_id: int)
     publish_log(document_id, f"[Graphify Engine] Processing {file_path} (Type: {mime_type}, DocID: {document_id})")
     db = SessionLocal()
     doc = db.query(Document).filter(Document.id == document_id).first()
-    if doc:
+    if doc and doc.status != "completed":
         doc.status = "processing"
         db.commit()
     path_obj = Path(file_path)
     
     try:
         if mime_type.startswith("video/") or mime_type.startswith("audio/"):
-            # 调用 graphify 的 transcribe 模块进行本地处理
             publish_log(document_id, f" -> Transcribing audio/video via whisper...")
             transcript_path = transcribe.transcribe(
                 path_obj, 
-                cache_dir=Path(TRANSCRIPT_DIR), 
-                prompt="", 
-                model_name="base"
+                output_dir=Path(TRANSCRIPT_DIR),
+                initial_prompt="",
+                force=False
             )
             publish_log(document_id, f" -> Transcript saved to: {transcript_path}")
-            # 转录完成后可作为常规文本文件传给下游图谱提取
-            path_obj = transcript_path
+            # 转写文本不经过代码 AST 提取器，直接送入 LLM-Wiki 语义管线
+            # （用 .delay 链式分发，完整走 2-step CoT + Deep Research + Enrichment）
+            publish_log(document_id, " -> Delegating transcript to LLM-Wiki Engine for semantic extraction...")
+            process_via_wiki_engine.delay(str(transcript_path), "text/plain", document_id)
+            return "DELEGATED"
 
-        # 调用 graphify 的核心 AST/语义提取模块
-        publish_log(document_id, " -> Extracting graph nodes and edges...")
-        # extract 接受 list[Path]，这里传入单个文件
+        # 代码文件：走 graphify 的 AST/结构化提取
+        publish_log(document_id, " -> Extracting graph nodes and edges (AST)...")
         extraction_result = extract.extract([path_obj])
         publish_log(document_id, f" -> Extraction complete. Found {len(extraction_result.get('nodes', []))} nodes.")
         
@@ -61,7 +62,7 @@ def process_via_graphify(self, file_path: str, mime_type: str, document_id: int)
         return "SUCCESS"
     except Exception as e:
         publish_log(document_id, f"[ERROR] Graphify Error: {e}")
-        if doc:
+        if doc and doc.status != "completed":
             doc.status = "failed"
             db.commit()
         return "FAILED"
@@ -76,7 +77,7 @@ def process_via_wiki_engine(self, file_path: str, mime_type: str, document_id: i
     publish_log(document_id, f"[LLM-Wiki Engine] Processing {file_path} (Type: {mime_type}, DocID: {document_id})")
     db = SessionLocal()
     doc = db.query(Document).filter(Document.id == document_id).first()
-    if doc and doc.status == "pending":
+    if doc and doc.status not in ("completed", "audit_required", "rejected", "failed", "deleted"):
         doc.status = "processing"
         db.commit()
     path_obj = Path(file_path)
@@ -171,6 +172,7 @@ def process_via_wiki_engine(self, file_path: str, mime_type: str, document_id: i
                             existing.description = desc
                             existing.rich_content = rich_md
                             existing.source_document_id = document_id
+                            existing.status = "active"
                         else:
                             new_node = ConceptNode(
                                 name=name,
@@ -189,11 +191,44 @@ def process_via_wiki_engine(self, file_path: str, mime_type: str, document_id: i
                         publish_log(document_id, f"    -> [Warning] Failed to enrich {name}: {e}")
                         db.rollback()
 
+            # --- Deep Research → Concept Nodes ---
+            if deep_research_results:
+                publish_log(document_id, f" -> [Deep Research] Creating concept nodes from {len(deep_research_results)} research results...")
+                for query, summary in deep_research_results.items():
+                    if not query or not summary:
+                        continue
+                    short_desc = summary.split(".")[0][:200] if "." in summary else summary[:200]
+                    try:
+                        existing_dr = db.query(ConceptNode).filter(
+                            ConceptNode.name == query,
+                            ConceptNode.project_id == doc.project_id
+                        ).first()
+                        if existing_dr:
+                            existing_dr.description = short_desc
+                            existing_dr.rich_content = summary
+                            existing_dr.source_document_id = document_id
+                            existing_dr.status = "active"
+                        else:
+                            db.add(ConceptNode(
+                                name=query,
+                                entity_type="concept",
+                                description=short_desc,
+                                rich_content=summary,
+                                project_id=doc.project_id,
+                                tenant_id=doc.tenant_id,
+                                source_document_id=document_id
+                            ))
+                        db.commit()
+                        publish_log(document_id, f"    -> Deep Research concept saved: {query}")
+                    except Exception as e:
+                        publish_log(document_id, f"    -> [Warning] Failed to save deep research concept {query}: {e}")
+                        db.rollback()
+
         publish_log(document_id, "[DONE] LLM-Wiki CoT extraction and enrichment complete.")
         return "SUCCESS"
     except Exception as e:
         publish_log(document_id, f"[ERROR] LLM-Wiki Error: {e}")
-        if doc:
+        if doc and doc.status not in ("completed", "rejected"):
             doc.status = "failed"
             db.commit()
         return "FAILED"
@@ -208,7 +243,7 @@ def process_via_advanced_skills(self, file_path: str, mime_type: str, document_i
     publish_log(document_id, f"[Advanced Skills Engine] Extracting structure from {file_path} (Type: {mime_type}, DocID: {document_id})")
     db = SessionLocal()
     doc = db.query(Document).filter(Document.id == document_id).first()
-    if doc:
+    if doc and doc.status != "completed":
         doc.status = "processing"
         db.commit()
     db.close() # close early because wiki_engine will open its own session
@@ -237,7 +272,7 @@ def process_via_advanced_skills(self, file_path: str, mime_type: str, document_i
         publish_log(document_id, f"[ERROR] Advanced Skills Error: {e}")
         db_err = SessionLocal()
         doc_err = db_err.query(Document).filter(Document.id == document_id).first()
-        if doc_err:
+        if doc_err and doc_err.status != "completed":
             doc_err.status = "failed"
             db_err.commit()
         db_err.close()

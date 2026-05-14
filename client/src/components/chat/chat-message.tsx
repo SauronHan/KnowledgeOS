@@ -28,22 +28,12 @@ export function useSourceFiles() {
     let mounted = true
     const fetchSources = async () => {
       try {
-        const token = localStorage.getItem("kos_auth_token")
-        const serverUrl = useWikiStore.getState().serverConfig?.url || "http://127.0.0.1:8080"
-        
-        const res = await fetch(`${serverUrl}/api/v1/documents?limit=100`, {
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          }
-        })
-        
-        if (res.ok) {
-          const data = await res.json()
-          if (data && Array.isArray(data.data)) {
-            const names = data.data.map((doc: any) => doc.filename)
-            cachedSourceFiles = names
-            if (mounted) setSources(names)
-          }
+        const { kosApiRequest } = await import("@/lib/api-client")
+        const data = await kosApiRequest<any>("/documents?limit=100")
+        if (data && Array.isArray(data.data)) {
+          const names = data.data.map((doc: any) => doc.filename)
+          cachedSourceFiles = names
+          if (mounted) setSources(names)
         }
       } catch (err) {
         console.error("Failed to fetch source files for chat:", err)

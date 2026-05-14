@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Plus, RefreshCw, FileText, Eye, Trash2, Folder, ChevronRight, ChevronDown, BookOpen, Database } from "lucide-react"
+import { Plus, RefreshCw, FileText, Eye, Trash2, Folder, ChevronRight, ChevronDown, BookOpen, Database, Link, ExternalLink, CheckCircle } from "lucide-react"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useWikiStore } from "@/stores/wiki-store"
 import type { FileNode } from "@/types/wiki"
 import { useTranslation } from "react-i18next"
-import { kosFetch, kosApiRequest, API_BASE_URL, getAuthToken } from "@/lib/api-client"
+import { kosFetch, kosApiRequest, getAuthToken, getServerUrl } from "@/lib/api-client"
 
 export function SourcesView() {
   const { t } = useTranslation()
@@ -22,6 +22,10 @@ export function SourcesView() {
   const serverConfig = useWikiStore((s) => s.serverConfig)
   const [mode, setMode] = useState<"sources" | "wiki">("sources")
   const [wikiNodes, setWikiNodes] = useState<any[]>([])
+  const [showUrlDialog, setShowUrlDialog] = useState(false)
+  const [urlInput, setUrlInput] = useState("")
+  const [urlFetching, setUrlFetching] = useState(false)
+  const [fetchResult, setFetchResult] = useState<{ level: number; levelName: string } | null>(null)
 
   useEffect(() => {
     if (!pendingDeletePath && !pendingReprocessPath) return
@@ -42,7 +46,8 @@ export function SourcesView() {
           name: doc.filename,
           path: `document_${doc.id}`,
           is_dir: false,
-          serverStatus: doc.status
+          serverStatus: doc.status,
+          sourceUrl: doc.source_url || null
         }))
         setSources(docs)
       } else {
@@ -129,6 +134,55 @@ export function SourcesView() {
     window.alert("Web 模式下暂不支持直接选择系统文件夹。请选中文件夹内的多个文件上传。")
   }
 
+  function detectUrlType(url: string): { type: string; label: string } {
+    const lower = url.toLowerCase()
+    if (lower.includes("youtube.com") || lower.includes("youtu.be")) {
+      return { type: "youtube", label: "YouTube Video" }
+    }
+    if (lower.includes("arxiv.org")) {
+      return { type: "arxiv", label: "arXiv Paper" }
+    }
+    if (lower.endsWith(".pdf")) {
+      return { type: "pdf", label: "PDF Document" }
+    }
+    if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp") || lower.endsWith(".gif")) {
+      return { type: "image", label: "Image" }
+    }
+    if (lower.includes("twitter.com") || lower.includes("x.com")) {
+      return { type: "tweet", label: "Tweet" }
+    }
+    return { type: "webpage", label: "Web Page" }
+  }
+
+  async function handleUrlSubmit() {
+    const trimmed = urlInput.trim()
+    if (!trimmed) return
+    setUrlFetching(true)
+    setFetchResult(null)
+    try {
+      const data = await kosApiRequest("/ingest/url", {
+        method: "POST",
+        body: JSON.stringify({ url: trimmed }),
+      })
+      console.log(`[Lyrebird KOS] URL ingested: ${data.filename}, engine: ${data.assigned_engine}`)
+      setFetchResult({
+        level: data.fetch_level || 0,
+        levelName: data.fetch_level_name || "unknown",
+      })
+      setTimeout(async () => {
+        setShowUrlDialog(false)
+        setUrlInput("")
+        setFetchResult(null)
+        await loadSources()
+      }, 1500)
+    } catch (err) {
+      console.error("[Lyrebird KOS] URL ingestion failed:", err)
+      window.alert(`Failed to ingest URL: ${err}`)
+    } finally {
+      setUrlFetching(false)
+    }
+  }
+
   async function handleOpenSource(node: FileNode) {
     if (!project) return
     const docId = node.path.replace('document_', '')
@@ -191,7 +245,7 @@ export function SourcesView() {
       return
     }
 
-    const viewUrl = `${API_BASE_URL}/documents/${docId}/download?token=${encodeURIComponent(token)}`
+    const viewUrl = `${getServerUrl()}/api/v1/documents/${docId}/download?token=${encodeURIComponent(token)}`
     try {
       await openUrl(viewUrl)
     } catch (err) {
@@ -251,7 +305,11 @@ export function SourcesView() {
           </Button>
           {mode === "sources" && (
             <>
-              <Button size="sm" className="h-8 text-xs px-2" onClick={handleImportClick} disabled={importing}>
+              <Button size="sm" className="h-8 text-xs px-2" onClick={() => setShowUrlDialog(true)} disabled={importing || project?.isReadonly} variant="outline">
+                <Link className="mr-1 h-3.5 w-3.5" />
+                URL
+              </Button>
+              <Button size="sm" className="h-8 text-xs px-2" onClick={handleImportClick} disabled={importing || project?.isReadonly}>
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 {importing ? "..." : t("sources.import")}
               </Button>
@@ -265,7 +323,7 @@ export function SourcesView() {
           sources.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
               <p>{t("sources.noSources")}</p>
-              <Button variant="outline" size="sm" onClick={handleImportClick}>
+              <Button variant="outline" size="sm" onClick={handleImportClick} disabled={project?.isReadonly}>
                 <Plus className="mr-1 h-4 w-4" />
                 {t("sources.importFiles")}
               </Button>
@@ -320,6 +378,18 @@ export function SourcesView() {
         style={{ display: "none" }} 
         onChange={handleFileSelected} 
       />
+
+      {showUrlDialog && (
+        <UrlIngestDialog
+          urlInput={urlInput}
+          onUrlInputChange={setUrlInput}
+          onSubmit={handleUrlSubmit}
+          onCancel={() => { setShowUrlDialog(false); setUrlInput(""); setFetchResult(null) }}
+          fetching={urlFetching}
+          detectUrlType={detectUrlType}
+          fetchResult={fetchResult}
+        />
+      )}
 
       <div className="border-t px-4 py-2 text-xs text-muted-foreground">
         {t("sources.sourceCount", { count: countFiles(sources) })}
@@ -465,6 +535,19 @@ function SourceTree({
             >
               <FileText className="h-4 w-4 shrink-0" />
               <span className="truncate">{node.name}</span>
+              {node.sourceUrl && (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    try { await openUrl(node.sourceUrl!) }
+                    catch { window.open(node.sourceUrl!, '_blank') }
+                  }}
+                  className="shrink-0 text-muted-foreground hover:text-blue-500 ml-1 cursor-pointer"
+                  title={node.sourceUrl}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </button>
+              )}
               {node.serverStatus === 'pending' && <span className="ml-1 text-[10px] bg-yellow-500/20 text-yellow-600 px-1 rounded-sm shrink-0">排队中</span>}
               {node.serverStatus === 'processing' && <span className="ml-1 text-[10px] bg-blue-500/20 text-blue-500 px-1 rounded-sm shrink-0">处理中</span>}
               {node.serverStatus === 'audit_required' && <span className="ml-1 text-[10px] bg-orange-500/20 text-orange-600 px-1 rounded-sm shrink-0 font-medium">待审核</span>}
@@ -508,6 +591,9 @@ function ReprocessButton({
   isPending: boolean
   onClick: () => void
 }) {
+  const project = useWikiStore((s) => s.project)
+  const isReadonly = project?.isReadonly
+  
   if (isPending) {
     return (
       <Button
@@ -516,6 +602,7 @@ function ReprocessButton({
         className="h-7 shrink-0 px-2 text-[11px] font-semibold bg-blue-600 hover:bg-blue-700 animate-pulse"
         title="Click again to confirm reprocessing"
         onClick={onClick}
+        disabled={isReadonly}
       >
         <RefreshCw className="mr-1 h-3.5 w-3.5" />
         Ingest
@@ -527,8 +614,9 @@ function ReprocessButton({
       variant="ghost"
       size="icon"
       className="h-7 w-7 shrink-0 text-muted-foreground hover:text-blue-500"
-      title="Reprocess Document"
+      title={isReadonly ? "Read-only project" : "Reprocess Document"}
       onClick={onClick}
+      disabled={isReadonly}
     >
       <RefreshCw className="h-3.5 w-3.5" />
     </Button>
@@ -544,6 +632,9 @@ function DeleteButton({
   onClick: () => void
   hint: string
 }) {
+  const project = useWikiStore((s) => s.project)
+  const isReadonly = project?.isReadonly
+
   if (isPending) {
     return (
       <Button
@@ -552,6 +643,7 @@ function DeleteButton({
         className="h-7 shrink-0 px-2 text-[11px] font-semibold animate-pulse"
         title={hint}
         onClick={onClick}
+        disabled={isReadonly}
       >
         <Trash2 className="mr-1 h-3.5 w-3.5" />
         Confirm
@@ -563,10 +655,107 @@ function DeleteButton({
       variant="ghost"
       size="icon"
       className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-      title={hint}
+      title={isReadonly ? "Read-only project" : hint}
       onClick={onClick}
+      disabled={isReadonly}
     >
       <Trash2 className="h-3.5 w-3.5" />
     </Button>
+  )
+}
+
+function UrlIngestDialog({
+  urlInput,
+  onUrlInputChange,
+  onSubmit,
+  onCancel,
+  fetching,
+  detectUrlType,
+  fetchResult,
+}: {
+  urlInput: string
+  onUrlInputChange: (v: string) => void
+  onSubmit: () => void
+  onCancel: () => void
+  fetching: boolean
+  detectUrlType: (url: string) => { type: string; label: string }
+  fetchResult: { level: number; levelName: string } | null
+}) {
+  const detected = urlInput.trim() ? detectUrlType(urlInput.trim()) : null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-md rounded-lg border bg-white shadow-xl p-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-1">Add Source from URL</h3>
+        <p className="text-sm text-slate-500 mb-4">
+          Paste a YouTube, arXiv, or web page link to extract its content into your project.
+        </p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">URL</label>
+            <input
+              type="text"
+              value={urlInput}
+              onChange={(e) => onUrlInputChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !fetching) onSubmit() }}
+              placeholder="https://youtube.com/watch?v=... or https://arxiv.org/abs/..."
+              className="block w-full rounded-md border border-slate-300 py-2 px-3 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              autoFocus
+            />
+          </div>
+
+          {detected && (
+            <div className={`rounded-md p-3 text-sm ${
+              detected.type === "youtube" ? "bg-red-50 text-red-700" :
+              detected.type === "arxiv" ? "bg-purple-50 text-purple-700" :
+              detected.type === "pdf" ? "bg-orange-50 text-orange-700" :
+              "bg-blue-50 text-blue-700"
+            }`}>
+              <span className="font-medium">{detected.label}</span>
+              <span className="ml-2 text-xs opacity-70">
+                {detected.type === "youtube" && "→ Download audio → Whisper transcription → Wiki engine"}
+                {detected.type === "arxiv" && "→ Fetch abstract + metadata → Wiki engine"}
+                {detected.type === "pdf" && "→ Download PDF → Advanced Skills → Wiki engine"}
+                {detected.type === "image" && "→ Download image → Vision extraction"}
+                {detected.type === "webpage" && "→ Fetch HTML → Convert to text → Wiki engine"}
+                {detected.type === "tweet" && "→ Fetch tweet text → Wiki engine"}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 text-sm font-medium cursor-pointer"
+            disabled={fetching}
+          >
+            Cancel
+          </button>
+          {fetchResult ? (
+            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-md text-sm font-medium">
+              <CheckCircle className="h-4 w-4" />
+              Done ({fetchResult.levelName})
+            </div>
+          ) : (
+            <button
+              onClick={onSubmit}
+              disabled={!urlInput.trim() || fetching}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium cursor-pointer"
+            >
+              {fetching ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Fetching...
+                </>
+              ) : (
+                "Add Source"
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

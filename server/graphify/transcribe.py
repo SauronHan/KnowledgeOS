@@ -45,11 +45,13 @@ def is_url(path: str) -> bool:
     return any(path.startswith(p) for p in URL_PREFIXES)
 
 
-def download_audio(url: str, output_dir: Path) -> Path:
+def download_audio(url: str, output_dir: Path, cookies_text: str | None = None) -> Path:
     """Download audio-only stream from a URL using yt-dlp.
 
     Returns the path to the downloaded audio file (.m4a or .opus).
     Uses cached file if already downloaded.
+
+    cookies_text: Netscape-format cookie string for yt-dlp authentication.
     """
     from graphify.security import validate_url
     validate_url(url)  # blocks private IPs, bad schemes before yt-dlp runs
@@ -77,6 +79,18 @@ def download_audio(url: str, output_dir: Path) -> Path:
         'postprocessors': [],  # no ffmpeg needed — use native audio
     }
 
+    # Cookie 注入：优先使用传入参数，否则回退环境变量
+    if cookies_text:
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, prefix='yt_cookies_')
+        tmp.write(cookies_text)
+        tmp.close()
+        ydl_opts['cookiefile'] = tmp.name
+    else:
+        cookies_file = os.environ.get("YOUTUBE_COOKIES_FILE")
+        if cookies_file and Path(cookies_file).exists():
+            ydl_opts['cookiefile'] = cookies_file
+
     print(f"  downloading audio: {url[:80]} ...", flush=True)
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -87,7 +101,26 @@ def download_audio(url: str, output_dir: Path) -> Path:
             for p in output_dir.glob(f"yt_{url_hash}.*"):
                 downloaded = p
                 break
-        return downloaded
+
+    # 用视频标题重命名，保留 hash 后缀保证唯一性
+    title = info.get('title', '').strip()
+    if title:
+        import re
+        safe_title = re.sub(r'[\\/:*?"<>|\t\n\r]', '', title)
+        safe_title = re.sub(r'\s+', ' ', safe_title).strip()
+        if len(safe_title) > 60:
+            safe_title = safe_title[:60]
+        if safe_title:
+            new_name = f"{safe_title}_yt_{url_hash}.{ext}"
+            new_path = output_dir / new_name
+            try:
+                os.rename(downloaded, new_path)
+                downloaded = new_path
+                print(f"  renamed -> {new_name}")
+            except OSError:
+                pass  # keep hash-only name on rename failure
+
+    return downloaded
 
 
 def build_whisper_prompt(god_nodes: list[dict]) -> str:

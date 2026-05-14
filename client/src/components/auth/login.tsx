@@ -1,8 +1,9 @@
 import { useState } from "react"
 import { Lock, User as UserIcon, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { getServerUrl } from "@/lib/api-client"
 
-export function LoginScreen({ onLogin }: { onLogin: (token: string, user: any) => void }) {
+export function LoginScreen({ onLogin, onBack }: { onLogin: (token: string, user: any) => void; onBack?: () => void }) {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -14,8 +15,8 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, user: any) =
     setLoading(true)
 
     try {
-      // In a real env, use the configured server url, here we fallback to localhost
-      const response = await fetch("http://127.0.0.1:8080/api/v1/auth/login", {
+      const serverUrl = getServerUrl()
+      const response = await fetch(`${serverUrl}/api/v1/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })
@@ -89,6 +90,18 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, user: any) =
             Sign In
           </Button>
         </form>
+
+        {onBack && (
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={onBack}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Change Server Address
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

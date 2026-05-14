@@ -36,14 +36,35 @@ client/src-tauri/binaries/
 server/data/lancedb/
 server/data/raw_uploads/
 server/data/transcripts/
+server/data/models_config copy.yaml
+
+# Shared project packages (管理员手动放置的压缩包)
+server/shared_packages/*.zip
+
+# Cookie & 认证文件 (严禁上传)
+server/data/*cookies*.txt
+server/data/*platform_cookies*
 
 # 特殊文件
 docs/产品LLM-Prompt梳理.md
 docs/开发计划.md
-docs/Github 同步.md
+docs/Github同步.md
+docs/graph_features.md
+Ingest全链路分析.md
+Project 本地目录分析.md
+共享隔离实施计划.md
+共享项目再次规划.md
+共享项目第三次规划.md
+关于共享项目的需求-02.txt
+关于共享项目的需求.txt
+多源URL内容获取架构规划.md
+server/*.sql
+
 
 # 浏览器插件-临时隐藏
 extension/
+website/
+server/shared_packages/
 
 # Large assets
 *.pdf

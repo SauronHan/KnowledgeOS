@@ -46,6 +46,7 @@ export function KnowledgeTree() {
 
   const loadPages = useCallback(async () => {
     if (!project) return
+
     const pp = normalizePath(project.path)
     try {
       const wikiTree = await listDirectory(`${pp}/wiki`)
@@ -83,6 +84,7 @@ export function KnowledgeTree() {
   const handleDeleteClick = useCallback(
     async (pagePath: string) => {
       if (!project) return
+      if (project.isReadonly) return
       // First click: arm. Second click on the same row: execute.
       if (armedPath !== pagePath) {
         setArmedPath(pagePath)
@@ -207,6 +209,7 @@ export function KnowledgeTree() {
                         <DeleteButton
                           armed={isArmed}
                           deleting={isDeleting}
+                          hidden={!!project?.isReadonly}
                           // Visible on hover, when this row is armed,
                           // or while deleting. Other rows fade out so
                           // accidental clicks on a sibling don't pile up.
@@ -242,7 +245,7 @@ function RawSourcesSection() {
   const [sources, setSources] = useState<FileNode[]>([])
 
   useEffect(() => {
-    if (!project) return
+    if (!project || project.isReadonly) return
     const pp = normalizePath(project.path)
     listDirectory(`${pp}/raw/sources`)
       .then((tree) => setSources(flattenAllFiles(tree)))
@@ -349,14 +352,17 @@ function DeleteButton({
   deleting,
   onClick,
   name,
+  hidden = false,
   className = "",
 }: {
   armed: boolean
   deleting: boolean
   onClick: () => void
   name: string
+  hidden?: boolean
   className?: string
 }) {
+  if (hidden) return null
   if (deleting) {
     return (
       <Button

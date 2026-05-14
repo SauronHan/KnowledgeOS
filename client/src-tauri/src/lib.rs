@@ -89,6 +89,7 @@ pub fn run() {
             commands::fs::read_file_as_base64,
             commands::project::create_project,
             commands::project::open_project,
+            commands::project::download_and_extract_shared_project,
             clip_server_status,
             commands::vectorstore::vector_upsert,
             commands::vectorstore::vector_search,

@@ -12,9 +12,15 @@ import { useChatStore } from "@/stores/chat-store"
 import { useReviewStore } from "@/stores/review-store"
 import { useActivityStore } from "@/stores/activity-store"
 import { useResearchStore } from "@/stores/research-store"
+import { useWikiStore } from "@/stores/wiki-store"
 
 export async function resetProjectState(): Promise<void> {
   // Zustand stores — clear all per-project data (synchronous)
+  useWikiStore.setState({
+    fileTree: [],
+    selectedFile: null,
+  })
+
   useChatStore.setState({
     conversations: [],
     messages: [],

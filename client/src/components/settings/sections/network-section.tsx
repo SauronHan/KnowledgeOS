@@ -41,6 +41,25 @@ export function NetworkSection({ draft, setDraft }: Props) {
         </div>
       </div>
 
+      {/* 默认项目路径 */}
+      <div className="space-y-3 pb-4 border-b">
+        <div>
+          <h2 className="text-xl font-semibold">Default Project Directory</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            新建项目将默认在此目录下创建。共享项目解压后也会放置在此目录。可在创建项目时临时覆盖。
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="project-root">Project Root Path</Label>
+          <Input
+            id="project-root"
+            value={draft.projectRoot}
+            onChange={(e) => setDraft("projectRoot", e.target.value)}
+            placeholder="/Users/you/Documents/Lyrebird"
+          />
+        </div>
+      </div>
+
       <div>
         <h2 className="text-xl font-semibold">
           {t("settings.sections.network.title", { defaultValue: "Network" })}

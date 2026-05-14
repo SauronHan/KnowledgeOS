@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Database, Settings, Users, LogOut, User as UserIcon } from 'lucide-react';
+import { Database, Settings, Users, LogOut, User as UserIcon, Globe, Cookie } from 'lucide-react';
 import { AuditDashboard } from './pages/AuditDashboard';
 import { ConfigDashboard } from './pages/ConfigDashboard';
 import { UserDashboard } from './pages/UserDashboard';
+import { SharedProjectDashboard } from './pages/SharedProjectDashboard';
+import { CookieDashboard } from './pages/CookieDashboard';
 import { Login } from './pages/Login';
 
 // Helper to check auth status
@@ -42,6 +44,8 @@ function Sidebar() {
   const navItems = [
     { path: '/', label: 'Audit Center', icon: Database },
     { path: '/users', label: 'Users & Tenants', icon: Users },
+    { path: '/shared-projects', label: 'Shared Projects', icon: Globe },
+    { path: '/cookies', label: 'Platform Cookies', icon: Cookie },
     { path: '/config', label: 'LLM Config', icon: Settings },
   ];
 
@@ -107,6 +111,8 @@ function App() {
                 <Routes>
                   <Route path="/" element={<AuditDashboard />} />
                   <Route path="/users" element={<UserDashboard />} />
+                  <Route path="/shared-projects" element={<SharedProjectDashboard />} />
+                  <Route path="/cookies" element={<CookieDashboard />} />
                   <Route path="/config" element={<ConfigDashboard />} />
                 </Routes>
               </MainLayout>

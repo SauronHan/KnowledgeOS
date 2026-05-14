@@ -50,6 +50,7 @@ export interface SettingsDraft {
 
   // Lyrebird KOS C/S 架构后端服务器地址
   serverUrl: string
+  projectRoot: string
   chatSystemPromptOverride: string
 
   // UI

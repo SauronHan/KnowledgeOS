@@ -1,6 +1,6 @@
 import { load } from "@tauri-apps/plugin-store"
 import type { WikiProject } from "@/types/wiki"
-import type { LlmConfig, SearchApiConfig, EmbeddingConfig, MultimodalConfig, OutputLanguage, ProviderConfigs, ProxyConfig } from "@/stores/wiki-store"
+import type { LlmConfig, SearchApiConfig, EmbeddingConfig, MultimodalConfig, OutputLanguage, ProviderConfigs, ProxyConfig, ServerConfig } from "@/stores/wiki-store"
 
 const STORE_NAME = "app-state.json"
 const RECENT_PROJECTS_KEY = "recentProjects"
@@ -131,6 +131,32 @@ export async function saveProxyConfig(config: ProxyConfig): Promise<void> {
 export async function loadProxyConfig(): Promise<ProxyConfig | null> {
   const store = await getStore()
   return (await store.get<ProxyConfig>(PROXY_CONFIG_KEY)) ?? null
+}
+
+const SERVER_CONFIG_KEY = "serverConfig"
+
+export async function saveServerConfig(config: ServerConfig): Promise<void> {
+  const store = await getStore()
+  await store.set(SERVER_CONFIG_KEY, config)
+  await store.save()
+}
+
+export async function loadServerConfig(): Promise<ServerConfig | null> {
+  const store = await getStore()
+  return (await store.get<ServerConfig>(SERVER_CONFIG_KEY)) ?? null
+}
+
+const PROJECT_ROOT_KEY = "projectRoot"
+
+export async function saveProjectRoot(path: string): Promise<void> {
+  const store = await getStore()
+  await store.set(PROJECT_ROOT_KEY, path)
+  await store.save()
+}
+
+export async function loadProjectRoot(): Promise<string | null> {
+  const store = await getStore()
+  return (await store.get<string>(PROJECT_ROOT_KEY)) ?? null
 }
 
 export async function removeFromRecentProjects(

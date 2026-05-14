@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import os
 import re
+import yaml
 from datetime import datetime
 from app.database import get_db
 from app.models import Document, User, Project
-from app.routers.auth import get_current_user, get_project_id
+from app.routers.auth import get_current_user, get_project_id, check_project_write_permission
 from app.tasks import process_via_wiki_engine
 import litellm
 import json
@@ -16,6 +17,38 @@ from app.lancedb_client import search_documents
 
 router = APIRouter(tags=["Chat Proxy"])
 logger = logging.getLogger(__name__)
+
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "models_config.yaml")
+_keys_loaded = False
+
+
+def _load_api_keys_once():
+    """将 models_config.yaml 中的 API Keys 注入 os.environ，供 LiteLLM 使用。
+    只执行一次（模块级懒加载）。"""
+    global _keys_loaded
+    if _keys_loaded:
+        return
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            full_config = yaml.safe_load(f) or {}
+        api_keys = full_config.get("api_keys", {})
+        for key, val in api_keys.items():
+            if val:
+                os.environ[key] = str(val)
+        _keys_loaded = True
+    except Exception as e:
+        logger.warning(f"Failed to load API keys from config: {e}")
+
+
+def _get_chat_model_from_config() -> str:
+    """从 models_config.yaml 读取 chat_model，失败时回退 deepseek/deepseek-chat。"""
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return data.get("models", {}).get("chat_model", "openrouter/deepseek/deepseek-v4-flash")
+    except Exception:
+        return "openrouter/deepseek/deepseek-v4-flash"
+
 
 @router.post("/chat/completions")
 async def chat_completions(
@@ -33,19 +66,25 @@ async def chat_completions(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON body")
 
+    _load_api_keys_once()
+
     raw_model = body.get("model")
     if not raw_model:
-        raw_model = "gemini/gemini-2.5-flash"
+        raw_model = _get_chat_model_from_config()
 
-    # LiteLLM needs the provider prefix (e.g., gemini/, deepseek/)
-    if "gemini" in raw_model and not raw_model.startswith("gemini/"):
+    # LiteLLM needs the provider prefix (e.g., gemini/, deepseek/).
+    # Only add prefix if the model doesn't already have one.
+    if "/" in raw_model:
+        model = raw_model           # already has provider prefix like openrouter/xxx
+    elif "gemini" in raw_model:
         model = f"gemini/{raw_model}"
-    elif "deepseek" in raw_model and not raw_model.startswith("deepseek/"):
+    elif "deepseek" in raw_model:
         model = f"deepseek/{raw_model}"
     else:
         model = raw_model
-        
+         
     logger.info(f"Chat Proxy: Incoming model '{body.get('model')}', using LiteLLM model '{model}'")
+    print(f"[Chat] RESOLVED MODEL: {model}", flush=True)
         
     messages = body.get("messages", [])
     stream = body.get("stream", False)
@@ -101,17 +140,21 @@ async def chat_rag(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON body")
 
+    _load_api_keys_once()
+
     raw_model = body.get("model")
     if not raw_model:
-        raw_model = "gemini/gemini-2.5-flash"
+        raw_model = _get_chat_model_from_config()
         
-    if "gemini" in raw_model and not raw_model.startswith("gemini/"):
+    if "/" in raw_model:
+        model = raw_model
+    elif "gemini" in raw_model:
         model = f"gemini/{raw_model}"
-    elif "deepseek" in raw_model and not raw_model.startswith("deepseek/"):
+    elif "deepseek" in raw_model:
         model = f"deepseek/{raw_model}"
     else:
         model = raw_model
-        
+         
     messages = body.get("messages", [])
     if not messages:
         raise HTTPException(status_code=400, detail="No messages provided")
@@ -203,7 +246,13 @@ async def save_chat_to_wiki(
     
     # 2. Prepare user storage directory
     project = db.query(Project).filter(Project.id == project_id).first()
-    project_uuid = project.uuid if project else "default"
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    # 检查写权限
+    check_project_write_permission(current_user, project)
+    
+    project_uuid = project.uuid
     
     user_dir = f"data/raw_uploads/user_{current_user.id}/project_{project_uuid}/wiki/queries"
     os.makedirs(user_dir, exist_ok=True)

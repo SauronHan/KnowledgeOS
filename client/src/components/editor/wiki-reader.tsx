@@ -38,7 +38,7 @@ export function WikiReader({ body }: WikiReaderProps) {
   function handleAnchorClick(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
     if (!href.startsWith("#")) return
     e.preventDefault()
-    if (!wikiRoot) return
+    if (!wikiRoot || project?.isReadonly) return
     const slug = (() => {
       try {
         return decodeURIComponent(href.slice(1))

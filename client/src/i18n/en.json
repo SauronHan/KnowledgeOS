@@ -259,7 +259,8 @@
         "openDownload": "Open download page",
         "later": "Later",
         "autoCheck": "Check for updates automatically on startup (at most once every 6 hours)",
-        "appDescription": "An LLM-driven personal knowledge base. Source:"
+        "appDescription": "An LLM-driven personal knowledge base. Source:",
+        "body": "Lyrebird-KOS is a next-generation enterprise knowledge graph management platform. The system adopts an advanced SaaS C/S architecture with a Tenant-User-Project three-tier isolation mechanism ensuring data sovereignty and security. The platform integrates a deep knowledge extraction engine that automatically transforms fragmented documents (PDF, Markdown, etc.) into a highly connected database-driven knowledge graph. With \"node storage\" technology, Lyrebird-KOS eliminates hallucination and fragmentation issues in LLM analysis, providing users with a traceable, auditable, and highly structured personal and enterprise knowledge base experience."
       }
     }
   },

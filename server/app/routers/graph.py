@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.routers.auth import get_current_user, get_project_id
-from app.models import Document, User, ConceptNode
+from app.routers.auth import get_current_user, get_project_id, check_project_read_permission
+from app.models import Document, User, ConceptNode, Project
 import logging
 
 router = APIRouter(tags=["Graph"])
@@ -15,15 +15,20 @@ def get_global_graph(
     current_user: User = Depends(get_current_user),
     project_id: Optional[int] = Depends(get_project_id)
 ):
-    if not project_id:
-        raise HTTPException(status_code=400, detail="X-Project-Id header is required")
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
 
-    # 构建文档查询（按项目隔离）
+    check_project_read_permission(current_user, project, db)
+
+    # 构建文档查询
     doc_query = db.query(Document).filter(
         Document.status == "completed",
-        Document.user_id == current_user.id,
         Document.project_id == project_id
     )
+    # 如果是私有项目，则严格按 user_id 过滤
+    if project.visibility != "shared":
+        doc_query = doc_query.filter(Document.user_id == current_user.id)
     
     docs = doc_query.all()
     

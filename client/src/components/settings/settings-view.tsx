@@ -58,6 +58,7 @@ function initialDraft(
   outputLanguage: ReturnType<typeof useWikiStore.getState>["outputLanguage"],
   proxy: ReturnType<typeof useWikiStore.getState>["proxyConfig"],
   server: ReturnType<typeof useWikiStore.getState>["serverConfig"],
+  projectRoot: string,
   chatSystemPromptOverride: string,
   maxHistoryMessages: number,
   uiLanguage: string,
@@ -91,6 +92,7 @@ function initialDraft(
     proxyUrl: proxy.url,
     proxyBypassLocal: proxy.bypassLocal,
     serverUrl: server.url,
+    projectRoot: projectRoot,
     chatSystemPromptOverride,
     uiLanguage,
   }
@@ -110,6 +112,8 @@ export function SettingsView() {
   const setProxyConfig = useWikiStore((s) => s.setProxyConfig)
   const serverConfig = useWikiStore((s) => s.serverConfig)
   const setServerConfig = useWikiStore((s) => s.setServerConfig)
+  const projectRoot = useWikiStore((s) => s.projectRoot)
+  const setProjectRoot = useWikiStore((s) => s.setProjectRoot)
   const maxHistoryMessages = useChatStore((s) => s.maxHistoryMessages)
   const setMaxHistoryMessages = useChatStore((s) => s.setMaxHistoryMessages)
   // Drives the red dot next to the "About" row in the settings
@@ -132,6 +136,7 @@ export function SettingsView() {
       outputLanguage,
       proxyConfig,
       serverConfig,
+      projectRoot,
       useWikiStore.getState().chatSystemPromptOverride,
       maxHistoryMessages,
       i18n.language,
@@ -148,6 +153,7 @@ export function SettingsView() {
         outputLanguage,
         proxyConfig,
         serverConfig,
+        projectRoot,
         useWikiStore.getState().chatSystemPromptOverride,
         maxHistoryMessages,
         i18n.language,
@@ -160,6 +166,7 @@ export function SettingsView() {
     outputLanguage,
     proxyConfig,
     serverConfig,
+    projectRoot,
     maxHistoryMessages,
     useWikiStore.getState().chatSystemPromptOverride,
   ])
@@ -175,6 +182,8 @@ export function SettingsView() {
       saveMultimodalConfig,
       saveOutputLanguage,
       saveProxyConfig,
+      saveServerConfig,
+      saveProjectRoot,
       saveChatSystemPrompt,
     } = await import("@/lib/project-store")
 
@@ -234,6 +243,13 @@ export function SettingsView() {
     setProxyConfig(newProxy)
     await saveProxyConfig(newProxy)
     setServerConfig(newServer)
+    // Keep localStorage in sync so kosFetch picks up the change
+    // without waiting for the next app restart
+    import("@/lib/api-client").then(({ setServerUrl }) => setServerUrl(newServer.url))
+    await saveServerConfig(newServer)
+    const newProjectRoot = draft.projectRoot.trim()
+    setProjectRoot(newProjectRoot)
+    saveProjectRoot(newProjectRoot).catch((e) => console.warn("Failed to save project root:", e))
     useWikiStore.getState().setChatSystemPromptOverride(draft.chatSystemPromptOverride)
     await saveChatSystemPrompt(draft.chatSystemPromptOverride)
     // To-Do: serverConfig persistence logic (can rely on app-state.json logic)

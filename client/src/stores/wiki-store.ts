@@ -88,7 +88,7 @@ interface ProxyConfig {
 }
 
 /** Lyrebird KOS 企业级后端服务器地址 */
-interface ServerConfig {
+export interface ServerConfig {
   url: string
 }
 
@@ -183,6 +183,7 @@ interface WikiState {
   outputLanguage: OutputLanguage
   proxyConfig: ProxyConfig
   serverConfig: ServerConfig
+  projectRoot: string
   chatSystemPromptOverride: string
   dataVersion: number
 
@@ -202,6 +203,7 @@ interface WikiState {
   setOutputLanguage: (lang: OutputLanguage) => void
   setProxyConfig: (config: ProxyConfig) => void
   setServerConfig: (config: ServerConfig) => void
+  setProjectRoot: (path: string) => void
   setChatSystemPromptOverride: (prompt: string) => void
   bumpDataVersion: () => void
 }
@@ -277,9 +279,11 @@ export const useWikiStore = create<WikiState>((set) => ({
 
   proxyConfig: { enabled: false, url: "http://127.0.0.1:7890", bypassLocal: true },
   serverConfig: { url: "http://127.0.0.1:8080" },
+  projectRoot: "",
 
 
   setServerConfig: (config) => set({ serverConfig: config }),
+  setProjectRoot: (path) => set({ projectRoot: path }),
   setChatSystemPromptOverride: (prompt) => set({ chatSystemPromptOverride: prompt }),
   bumpDataVersion: () => set((s) => ({ dataVersion: s.dataVersion + 1 })),
 }))

@@ -12,9 +12,10 @@ import { ErrorBoundary } from "@/components/error-boundary"
 
 interface AppLayoutProps {
   onSwitchProject: () => void
+  onLogout: () => void
 }
 
-export function AppLayout({ onSwitchProject }: AppLayoutProps) {
+export function AppLayout({ onSwitchProject, onLogout }: AppLayoutProps) {
   const project = useWikiStore((s) => s.project)
   const selectedFile = useWikiStore((s) => s.selectedFile)
   const activeView = useWikiStore((s) => s.activeView)
@@ -90,8 +91,19 @@ export function AppLayout({ onSwitchProject }: AppLayoutProps) {
     // it fills the rest of the viewport.
     <div className="flex h-screen flex-col bg-background text-foreground">
       <UpdateBanner />
+      {/* App header with project name */}
+      <div className="flex shrink-0 items-center h-8 border-b bg-muted/30 px-4">
+        <span className="text-xs font-semibold text-muted-foreground tracking-wide">
+          Lyrebird KOS
+        </span>
+        {project && (
+          <span className="text-xs text-muted-foreground ml-2">
+            : {project.name}
+          </span>
+        )}
+      </div>
       <div className="flex min-h-0 flex-1">
-        <IconSidebar onSwitchProject={onSwitchProject} />
+        <IconSidebar onSwitchProject={onSwitchProject} onLogout={onLogout} />
         <div ref={containerRef} className="flex min-w-0 flex-1 overflow-hidden">
 
 

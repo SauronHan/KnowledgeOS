@@ -6,9 +6,9 @@ from typing import List, Optional
 from pathlib import Path
 
 from app.database import get_db
-from app.models import Document, User
+from app.models import Document, User, Project, ConceptNode
 from app.lancedb_client import search_documents
-from app.routers.auth import get_current_user, get_project_id
+from app.routers.auth import get_current_user, get_project_id, check_project_write_permission, check_project_read_permission
 import httpx
 import os
 import yaml
@@ -29,7 +29,12 @@ def read_user_file(
     if ".." in clean_path or clean_path.startswith("/"):
          raise HTTPException(status_code=400, detail="Invalid path")
          
-    user_base = f"data/raw_uploads/user_{current_user.id}"
+    # 判断路径是否属于共享项目
+    if clean_path.startswith("shared/"):
+        user_base = "data/raw_uploads"
+    else:
+        user_base = f"data/raw_uploads/user_{current_user.id}"
+    
     full_path = os.path.join(user_base, clean_path)
     
     if not os.path.exists(full_path):
@@ -58,10 +63,18 @@ def list_documents(
     if not project_id:
         raise HTTPException(status_code=400, detail="X-Project-Id header is required")
         
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    check_project_read_permission(current_user, project, db)
+
     query = db.query(Document).filter(
-        Document.user_id == current_user.id,
-        Document.project_id == project_id
+        Document.project_id == project_id,
+        Document.status != "deleted"
     )
+    if project.visibility != "shared":
+        query = query.filter(Document.user_id == current_user.id)
     if status:
         query = query.filter(Document.status == status)
     
@@ -75,7 +88,8 @@ def list_documents(
                 "id": doc.id,
                 "filename": doc.filename,
                 "mime_type": doc.mime_type,
-                "status": doc.status
+                "status": doc.status,
+                "source_url": doc.source_url
             } for doc in docs
         ]
     }
@@ -95,15 +109,13 @@ def get_document(
     获取特定文档的详情及大模型提取的完整知识结构（前端详情页用）
     支持 prune 剪枝参数，默认开启，防止客户端 WebGL 崩溃
     """
-    query = db.query(Document).filter(
-        Document.id == document_id, 
-        Document.user_id == current_user.id
-    )
-    if project_id:
-        query = query.filter(Document.project_id == project_id)
-    doc = query.first()
+    doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+        
+    project = db.query(Project).filter(Project.id == doc.project_id).first()
+    if project and project.visibility != "shared" and doc.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied to this document.")
         
     extracted_data = doc.extracted_data
     if prune and extracted_data:
@@ -115,6 +127,7 @@ def get_document(
             "id": doc.id,
             "filename": doc.filename,
             "status": doc.status,
+            "source_url": doc.source_url,
             "extracted_data": extracted_data
         }
     }
@@ -129,15 +142,13 @@ def get_document_content(
     """
     获取文档的 Markdown 内容或提取摘要（前端图谱点击源文件节点时使用）
     """
-    query = db.query(Document).filter(
-        Document.id == document_id, 
-        Document.user_id == current_user.id
-    )
-    if project_id:
-        query = query.filter(Document.project_id == project_id)
-    doc = query.first()
+    doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+        
+    project = db.query(Project).filter(Project.id == doc.project_id).first()
+    if project and project.visibility != "shared" and doc.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied.")
         
     content = f"# {doc.filename}\n\n"
     
@@ -210,17 +221,13 @@ def download_document(
     current_user: User = Depends(get_current_user),
     project_id: Optional[int] = Depends(get_project_id)
 ):
-    query = db.query(Document).filter(
-        Document.id == document_id, 
-        Document.user_id == current_user.id
-    )
-    if project_id:
-        query = query.filter(Document.project_id == project_id)
-    
-    doc = query.first()
-    
+    doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+        
+    project = db.query(Project).filter(Project.id == doc.project_id).first()
+    if project and project.visibility != "shared" and doc.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied.")
         
     file_path = Path(doc.file_path)
     if not file_path.exists():
@@ -240,34 +247,30 @@ def delete_document(
     project_id: Optional[int] = Depends(get_project_id)
 ):
     """
-    Delete a document and its associated physical file.
+    Soft-delete a document (status = "deleted") and clear its ConceptNode FK references.
     """
-    query = db.query(Document).filter(
-        Document.id == document_id, 
-        Document.user_id == current_user.id
-    )
-    if project_id:
-        query = query.filter(Document.project_id == project_id)
-    doc = query.first()
-    
+    doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
         
-    file_path = doc.file_path
+    project = db.query(Project).filter(Project.id == doc.project_id).first()
+    if not project:
+         raise HTTPException(status_code=404, detail="Project context not found")
+         
+    # 检查写权限
+    check_project_write_permission(current_user, project)
+        
+    # 软删除文档
+    doc.status = "deleted"
     
-    # Delete from DB
-    db.delete(doc)
+    # 解除关联 ConceptNode 的来源引用（不删除概念本身）
+    db.query(ConceptNode).filter(
+        ConceptNode.source_document_id == document_id
+    ).update({"source_document_id": None})
+    
     db.commit()
     
-    # Try delete physical file
-    try:
-        path = Path(file_path)
-        if path.exists():
-            path.unlink()
-    except Exception as e:
-        print(f"Failed to delete physical file {file_path}: {e}")
-        
-    return {"status": "success", "message": "Document deleted"}
+    return {"status": "success", "message": "Document archived."}
 
 @router.get("/web-search")
 async def web_search_proxy(
