@@ -49,6 +49,12 @@ One-click content extraction from anywhere on the web via a three-level intellig
 - **Cookie Management**: Centrally manage platform authentication cookies via the Admin Web dashboard (supports Header String and Netscape formats).
 - **Source Traceability**: Original URLs are saved to the database, enabling one-click browser access to the source material.
 
+<p align="center">
+  <img src="./docs/assets/02-knowledgeos-ingest-pipeline.svg" width="800" />
+  <br>
+  <em>Full Ingest Pipeline: From Raw Input to Structured Knowledge Node</em>
+</p>
+
 ### 🔀 4. LiteLLM Hybrid Model Routing
 Integrated with **LiteLLM** gateway to balance cost and intelligence:
 - **Smart Dispatching**: Step 1 (coarse analysis) uses cost-effective models (e.g., DeepSeek), while Step 2 (deep graph reasoning) utilizes top-tier models (e.g., Gemini 1.5 Pro / Claude 3.5).
@@ -98,6 +104,18 @@ Drawing inspiration from the rigor of the financial industry, we introduce a **M
 ### **Frontend (KnowledgeOS-Client)**
 - **Stack**: `Tauri v2` + `React 19` + `Vite` + `Tailwind CSS`
 - **Visualization**: `Sigma.js` + `Graphology`
+
+<p align="center">
+  <img src="./docs/assets/01-knowledgeos-architecture.svg" width="800" />
+  <br>
+  <em>Full System Architecture Overview</em>
+</p>
+
+<p align="center">
+  <img src="./docs/assets/04-knowledgeos-tech-stack.svg" width="800" />
+  <br>
+  <em>Complete Technology Stack: Every Layer, Every Technology</em>
+</p>
 
 ---
 

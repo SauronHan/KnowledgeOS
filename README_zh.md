@@ -50,6 +50,12 @@
 - **Cookie 统一管理**: Admin Web 端按域名配置各平台登录凭证（Header String / Netscape 格式），后端请求时自动注入。
 - **来源追溯**: 原始 URL 存入数据库，前端 Sources 列表一键外部链接打开原文。
 
+<p align="center">
+  <img src="./docs/assets/02-knowledgeos-ingest-pipeline.svg" width="800" />
+  <br>
+  <em>Ingest 全链路数据流图：从原始输入到结构化知识节点</em>
+</p>
+
 ### 🔀 4. LiteLLM 混合模型路由 (Smart Routing)
 集成 **LiteLLM** 统一网关，支持成本与智商的最佳平衡：
 - **灵活分发**: Step 1 粗分析走低成本模型（如 DeepSeek），Step 2 深度图谱推理走顶级模型（如 Gemini 1.5 Pro / Claude 3.5）。
@@ -97,6 +103,18 @@
 ### **前端 (KnowledgeOS-Client)**
 - **技术栈**: `Tauri v2` + `React 19` + `Vite` + `Tailwind CSS`
 - **图形渲染**: `Sigma.js` + `Graphology`
+
+<p align="center">
+  <img src="./docs/assets/01-knowledgeos-architecture.svg" width="800" />
+  <br>
+  <em>系统架构全景图</em>
+</p>
+
+<p align="center">
+  <img src="./docs/assets/04-knowledgeos-tech-stack.svg" width="800" />
+  <br>
+  <em>技术栈全景图：每一层、每一项技术</em>
+</p>
 
 ---
 
