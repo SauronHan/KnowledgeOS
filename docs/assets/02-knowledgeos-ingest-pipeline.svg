@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 950">
+<defs>
+<filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="shadow" x="-10%" y="-10%" width="130%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#d4a574" flood-opacity="0.06"/></filter>
+<radialGradient id="ambient" cx="50%" cy="40%" r="45%"><stop offset="0%" stop-color="#d4a574" stop-opacity="0.03"/><stop offset="100%" stop-color="#d4a574" stop-opacity="0"/></radialGradient>
+<marker id="arr-gold" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#d4a574"/></marker>
+<marker id="arr-mint" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#6ee7b7"/></marker>
+<marker id="arr-orange" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#fdba74"/></marker>
+<marker id="arr-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#a78bfa"/></marker>
+<marker id="arr-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#f87171"/></marker>
+<marker id="arr-muted" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#a39787"/></marker>
+</defs>
+<style>
+text{font-family:-apple-system,"Helvetica Neue",Arial,"PingFang SC",sans-serif}
+.ttl{font-family:Georgia,"Times New Roman",serif;font-size:21px;font-weight:700;fill:#f5f0eb}
+.sub{font-family:Georgia,"Times New Roman",serif;font-size:11px;fill:#c9a96e;opacity:0.7}
+.nm{font-size:12px;font-weight:600}
+.sm{font-size:9.5px;fill:#a39787}
+.xs{font-size:8.5px;fill:#6b5f53}
+.al{font-size:9px;fill:#8c7e72}
+.fn{font-family:"Cascadia Code","SF Mono","Courier New",monospace;font-size:9px;fill:#a39787}
+</style>
+<rect width="1200" height="950" fill="#0a0a0a"/>
+<rect width="1200" height="950" fill="url(#ambient)"/>
+<text x="600" y="36" text-anchor="middle" class="ttl">KnowledgeOS · Ingest 全链路数据流图</text>
+<text x="600" y="54" text-anchor="middle" class="sub">FULL INGEST PIPELINE — FROM FILE/UPLOAD TO KNOWLEDGE NODE</text>
+<rect x="80" y="80" width="230" height="44" rx="8" fill="none" stroke="#6ee7b7" stroke-width="1.5" filter="url(#shadow)"/>
+<rect x="80" y="80" width="230" height="44" rx="8" fill="#111111" opacity="0.95"/>
+<text x="195" y="100" text-anchor="middle" class="nm" fill="#6ee7b7">📤 Client Upload</text>
+<text x="195" y="116" text-anchor="middle" class="sm">Desktop Drag + Drop</text>
+<rect x="310" y="80" width="230" height="44" rx="8" fill="none" stroke="#6ee7b7" stroke-width="1.5" filter="url(#shadow)"/>
+<rect x="310" y="80" width="230" height="44" rx="8" fill="#111111" opacity="0.95"/>
+<text x="425" y="100" text-anchor="middle" class="nm" fill="#6ee7b7">🔗 URL Input</text>
+<text x="425" y="116" text-anchor="middle" class="sm">YouTube · Bilibili · Zhihu · X</text>
+<rect x="540" y="80" width="230" height="44" rx="8" fill="none" stroke="#6ee7b7" stroke-width="1.5" filter="url(#shadow)"/>
+<rect x="540" y="80" width="230" height="44" rx="8" fill="#111111" opacity="0.95"/>
+<text x="655" y="100" text-anchor="middle" class="nm" fill="#6ee7b7">🔗 Web Clipper</text>
+<text x="655" y="116" text-anchor="middle" class="sm">Chrome Extension → Clip Server</text>
+<line x1="195" y1="124" x2="195" y2="155" stroke="#6ee7b7" stroke-width="1.8" marker-end="url(#arr-mint)"/>
+<line x1="425" y1="124" x2="425" y2="155" stroke="#6ee7b7" stroke-width="1.8" marker-end="url(#arr-mint)"/>
+<line x1="655" y1="124" x2="655" y2="155" stroke="#6ee7b7" stroke-width="1.8" marker-end="url(#arr-mint)"/>
+<rect x="180" y="160" width="840" height="90" rx="8" fill="none" stroke="#d4a574" stroke-width="2" filter="url(#glow)"/>
+<rect x="180" y="160" width="840" height="90" rx="8" fill="#111111" opacity="0.95"/>
+<text x="600" y="180" text-anchor="middle" class="nm" fill="#d4a574">⚡ upload_and_ingest() — 智能分发器</text>
+<rect x="210" y="192" width="118" height="26" rx="4" fill="none" stroke="#d4a574" stroke-width="0.6" opacity="0.4"/>
+<text x="269" y="210" text-anchor="middle" class="xs" fill="#c9a96e">① 标准化文件名</text>
+<rect x="338" y="192" width="118" height="26" rx="4" fill="none" stroke="#d4a574" stroke-width="0.6" opacity="0.4"/>
+<text x="397" y="210" text-anchor="middle" class="xs" fill="#c9a96e">② 权限检查</text>
+<rect x="466" y="192" width="118" height="26" rx="4" fill="none" stroke="#d4a574" stroke-width="0.6" opacity="0.4"/>
+<text x="525" y="210" text-anchor="middle" class="xs" fill="#c9a96e">③ 存入文件系统</text>
+<rect x="594" y="192" width="118" height="26" rx="4" fill="none" stroke="#d4a574" stroke-width="0.6" opacity="0.4"/>
+<text x="653" y="210" text-anchor="middle" class="xs" fill="#c9a96e">④ 排重检测</text>
+<rect x="722" y="192" width="118" height="26" rx="4" fill="none" stroke="#d4a574" stroke-width="0.6" opacity="0.4"/>
+<text x="781" y="210" text-anchor="middle" class="xs" fill="#c9a96e">⑤ 创建 Document</text>
+<rect x="850" y="192" width="118" height="26" rx="4" fill="none" stroke="#d4a574" stroke-width="0.6" opacity="0.4"/>
+<text x="909" y="210" text-anchor="middle" class="xs" fill="#c9a96e">⑥ 路由分发 Celery</text>
+<text x="600" y="238" text-anchor="middle" class="sm">status: pending → processing</text>
+<rect x="60" y="280" width="260" height="110" rx="8" fill="none" stroke="#a78bfa" stroke-width="1.5" filter="url(#shadow)"/>
+<rect x="60" y="280" width="260" height="110" rx="8" fill="#111111" opacity="0.95"/>
+<text x="190" y="302" text-anchor="middle" class="nm" fill="#a78bfa">管线 1: 文本 / Markdown</text>
+<text x="190" y="322" text-anchor="middle" class="fn">process_via_wiki_engine</text>
+<text x="190" y="338" text-anchor="middle" class="sm">2-Step CoT</text>
+<line x1="190" y1="250" x2="190" y2="278" stroke="#a78bfa" stroke-width="1.2" opacity="0.5" marker-end="url(#arr-violet)"/>
+<rect x="330" y="280" width="260" height="110" rx="8" fill="none" stroke="#fbbf24" stroke-width="1.5" filter="url(#shadow)"/>
+<rect x="330" y="280" width="260" height="110" rx="8" fill="#111111" opacity="0.95"/>
+<text x="460" y="302" text-anchor="middle" class="nm" fill="#fbbf24">管线 2: 视频 / 音频</text>
+<text x="460" y="322" text-anchor="middle" class="fn">process_via_graphify</text>
+<text x="460" y="338" text-anchor="middle" class="sm">Whisper 转录 → wiki_engine</text>
+<line x1="460" y1="250" x2="460" y2="278" stroke="#fbbf24" stroke-width="1.2" opacity="0.5" marker-end="url(#arr-violet)"/>
+<rect x="600" y="280" width="260" height="110" rx="8" fill="none" stroke="#38bdf8" stroke-width="1.5" filter="url(#shadow)"/>
+<rect x="600" y="280" width="260" height="110" rx="8" fill="#111111" opacity="0.95"/>
+<text x="730" y="302" text-anchor="middle" class="nm" fill="#38bdf8">管线 3: 代码文件</text>
+<text x="730" y="322" text-anchor="middle" class="fn">process_via_graphify</text>
+<text x="730" y="338" text-anchor="middle" class="sm">Tree-sitter AST · 0 Token</text>
+<line x1="730" y1="250" x2="730" y2="278" stroke="#38bdf8" stroke-width="1.2" opacity="0.5" marker-end="url(#arr-violet)"/>
+<rect x="870" y="280" width="260" height="110" rx="8" fill="none" stroke="#5a9e6f" stroke-width="1.5" filter="url(#shadow)"/>
+<rect x="870" y="280" width="260" height="110" rx="8" fill="#111111" opacity="0.95"/>
+<text x="1000" y="302" text-anchor="middle" class="nm" fill="#5a9e6f">管线 4: PDF/DOCX/XLSX/PPTX</text>
+<text x="1000" y="322" text-anchor="middle" class="fn">process_via_advanced_skills</text>
+<text x="1000" y="338" text-anchor="middle" class="sm">文档解析 → wiki_engine</text>
+<line x1="1000" y1="250" x2="1000" y2="278" stroke="#5a9e6f" stroke-width="1.2" opacity="0.5" marker-end="url(#arr-violet)"/>
+<rect x="200" y="430" width="800" height="150" rx="8" fill="none" stroke="#f87171" stroke-width="2" filter="url(#glow)"/>
+<rect x="200" y="430" width="800" height="150" rx="8" fill="#111111" opacity="0.95"/>
+<text x="600" y="452" text-anchor="middle" class="nm" fill="#f87171">🧠 Wiki Engine Core — 2-Step Chain-of-Thought</text>
+<rect x="230" y="466" width="350" height="65" rx="6" fill="none" stroke="#f87171" stroke-width="1.2"/>
+<rect x="230" y="466" width="350" height="65" rx="6" fill="#1a1a1a" opacity="0.7"/>
+<text x="405" y="486" text-anchor="middle" class="nm" fill="#f87171">Step 1: Analyze</text>
+<text x="405" y="504" text-anchor="middle" class="sm">提取概念 · 识别矛盾 · 关联建议 · 生成研究问题</text>
+<text x="405" y="520" text-anchor="middle" class="xs">LLM 粗分析 → 低 Token 模型</text>
+<rect x="620" y="466" width="350" height="65" rx="6" fill="none" stroke="#f87171" stroke-width="1.2"/>
+<rect x="620" y="466" width="350" height="65" rx="6" fill="#1a1a1a" opacity="0.7"/>
+<text x="795" y="486" text-anchor="middle" class="nm" fill="#f87171">Step 2: Generate</text>
+<text x="795" y="504" text-anchor="middle" class="sm">生成 summary_markdown · nodes_to_create · edges</text>
+<text x="795" y="520" text-anchor="middle" class="xs">LLM 精生成 → 顶级模型</text>
+<line x1="580" y1="498" x2="618" y2="498" stroke="#f87171" stroke-width="1.5" marker-end="url(#arr-rose)"/>
+<rect x="350" y="542" width="500" height="28" rx="6" fill="none" stroke="#f87171" stroke-width="0.8" opacity="0.5"/>
+<text x="600" y="561" text-anchor="middle" class="sm">🔍 if suggested_research_queries → run_deep_research() → 补充 deep_research_results</text>
+<text x="600" y="582" text-anchor="middle" class="xs" fill="#c9a96e">状态机: pending → processing → completed (或 audit_required)</text>
+<line x1="190" y1="390" x2="190" y2="428" stroke="#f87171" stroke-width="1.2" opacity="0.4" marker-end="url(#arr-rose)"/>
+<line x1="460" y1="390" x2="460" y2="428" stroke="#f87171" stroke-width="1.2" opacity="0.4" marker-end="url(#arr-rose)"/>
+<line x1="730" y1="390" x2="730" y2="428" stroke="#f87171" stroke-width="1.2" opacity="0.4" marker-end="url(#arr-rose)"/>
+<line x1="1000" y1="390" x2="1000" y2="428" stroke="#f87171" stroke-width="1.2" opacity="0.4" marker-end="url(#arr-rose)"/>
+<rect x="60" y="620" width="1080" height="95" rx="8" fill="none" stroke="#fbbf24" stroke-width="1.5" filter="url(#shadow)"/>
+<rect x="60" y="620" width="1080" height="95" rx="8" fill="#111111" opacity="0.95"/>
+<text x="600" y="638" text-anchor="middle" class="nm" fill="#fbbf24">🌐 URL 摄入三级降级链 (URL Fetch Chain)</text>
+<rect x="90" y="650" width="240" height="52" rx="6" fill="none" stroke="#fbbf24" stroke-width="1"/>
+<rect x="90" y="650" width="240" height="52" rx="6" fill="#1a1a1a" opacity="0.7"/>
+<text x="210" y="668" text-anchor="middle" class="nm" fill="#fbbf24">Level 1: trafilatura 静态抓取</text>
+<text x="210" y="684" text-anchor="middle" class="sm">+ Cookie · 正文 > 200 字 → ✓</text>
+<rect x="360" y="650" width="240" height="52" rx="6" fill="none" stroke="#fbbf24" stroke-width="1"/>
+<rect x="360" y="650" width="240" height="52" rx="6" fill="#1a1a1a" opacity="0.7"/>
+<text x="480" y="668" text-anchor="middle" class="nm" fill="#fbbf24">Level 2: Jina Reader API</text>
+<text x="480" y="684" text-anchor="middle" class="sm">Cloud Playwright · JS 渲染 + Cookie 注入</text>
+<rect x="630" y="650" width="240" height="52" rx="6" fill="none" stroke="#fbbf24" stroke-width="1"/>
+<rect x="630" y="650" width="240" height="52" rx="6" fill="#1a1a1a" opacity="0.7"/>
+<text x="750" y="668" text-anchor="middle" class="nm" fill="#fbbf24">Level 3: Tavily Extract API</text>
+<text x="750" y="684" text-anchor="middle" class="sm">Advanced Mode · 付费兜底</text>
+<line x1="330" y1="676" x2="358" y2="676" stroke="#fbbf24" stroke-width="1.2" marker-end="url(#arr-orange)"/>
+<line x1="600" y1="676" x2="628" y2="676" stroke="#fbbf24" stroke-width="1.2" marker-end="url(#arr-orange)"/>
+<rect x="80" y="750" width="460" height="80" rx="8" fill="none" stroke="#fdba74" stroke-width="1.5" filter="url(#shadow)"/>
+<rect x="80" y="750" width="460" height="80" rx="8" fill="#111111" opacity="0.95"/>
+<text x="310" y="768" text-anchor="middle" class="nm" fill="#fdba74">🛡 Maker-Checker Audit Pipeline</text>
+<text x="310" y="788" text-anchor="middle" class="sm">audit_required → 人工审查 → approved / rejected</text>
+<text x="310" y="804" text-anchor="middle" class="xs">只有 approved 的知识节点才能进入共享向量池</text>
+<text x="310" y="820" text-anchor="middle" class="xs">拒绝低质量 · 重复 · 冲突信息</text>
+<rect x="600" y="750" width="520" height="80" rx="8" fill="none" stroke="#6ee7b7" stroke-width="1.5" filter="url(#shadow)"/>
+<rect x="600" y="750" width="520" height="80" rx="8" fill="#111111" opacity="0.95"/>
+<text x="860" y="768" text-anchor="middle" class="nm" fill="#6ee7b7">📦 最终产出</text>
+<text x="860" y="788" text-anchor="middle" class="sm">ConceptNode → PostgreSQL 入库 · Document Summary → LanceDB 向量索引</text>
+<text x="860" y="804" text-anchor="middle" class="sm">Wiki Markdown 文件 → 本地目录 · Obsidian 兼容格式</text>
+<text x="860" y="820" text-anchor="middle" class="xs">YAML frontmatter · [[wikilink]] · 全文搜索</text>
+<line x1="230" y1="748" x2="230" y2="580" stroke="#fdba74" stroke-width="1" opacity="0.3" stroke-dasharray="4,3"/>
+<line x1="750" y1="748" x2="750" y2="580" stroke="#6ee7b7" stroke-width="1.2" opacity="0.4"/>
+<rect x="40" y="860" width="1120" height="50" rx="6" fill="none" stroke="#d4a574" stroke-width="0.5" opacity="0.2"/>
+<text x="55" y="876" class="sub">图例 LEGEND</text>
+<line x1="60" y1="894" x2="90" y2="894" stroke="#6ee7b7" stroke-width="1.5"/>
+<text x="97" y="898" class="xs" fill="#8c7e72">Data Flow</text>
+<line x1="190" y1="894" x2="220" y2="894" stroke="#d4a574" stroke-width="1.5"/>
+<text x="227" y="898" class="xs" fill="#8c7e72">Dispatcher</text>
+<line x1="330" y1="894" x2="360" y2="894" stroke="#f87171" stroke-width="1.5"/>
+<text x="367" y="898" class="xs" fill="#8c7e72">Wiki Engine</text>
+<line x1="470" y1="894" x2="500" y2="894" stroke="#fbbf24" stroke-width="1.5"/>
+<text x="507" y="898" class="xs" fill="#8c7e72">URL Chain</text>
+<line x1="600" y1="894" x2="630" y2="894" stroke="#fdba74" stroke-width="1.5"/>
+<text x="637" y="898" class="xs" fill="#8c7e72">Audit Pipeline</text>
+<line x1="740" y1="894" x2="770" y2="894" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="777" y="898" class="xs" fill="#8c7e72">Pipeline Branch</text>
+<text x="600" y="932" text-anchor="middle" class="xs">KnowledgeOS v0.5.6 · Full Ingest Pipeline · From Raw Input to Structured Knowledge</text>
+</svg>
